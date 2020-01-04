@@ -8,6 +8,7 @@ import Navigation from "./Navigation";
 import Login from "./Login";
 import Meeting from "./Meeting";
 import Register from "./Register";
+import CheckIn from "./CheckIn";
 
 class App extends Component {
   constructor() {
@@ -16,7 +17,9 @@ class App extends Component {
     this.state = {
       user: null,
       displayName: null,
-      userID: null
+      userID: null,
+      meetings: [],
+      howManyMeetings: 0
     };
 
     this.registerUser = this.registerUser.bind(this);
@@ -38,6 +41,27 @@ class App extends Component {
           displayName: FBUser.displayName,
           userID: FBUser.uid
         });
+
+        const ref = firebase.database().ref(`meetings/` + FBUser.uid);
+
+        ref.on("value", snaphot => {
+          let meetings = snaphot.val();
+          let meetingsList = [];
+
+          for (let item in meetings) {
+            meetingsList.push({
+              meetingID: item,
+              meetingName: meetings[item].meetingName
+            });
+          }
+
+          this.setState({
+            meetings: meetingsList,
+            howManyMeetings: meetingsList.length
+          });
+        });
+      } else {
+        this.setState({ user: null });
       }
     });
   }
@@ -74,6 +98,12 @@ class App extends Component {
       });
   };
 
+  addMeeting = meetingName => {
+    const ref = firebase.database().ref(`meetings/${this.state.user.uid}`);
+
+    ref.push({ meetingName: meetingName });
+  };
+
   render() {
     return (
       <div>
@@ -88,7 +118,13 @@ class App extends Component {
         <Router>
           <Home path="/" user={this.state.user} />
           <Login path="/login" />
-          <Meeting path="/meetings" />
+          <Meeting
+            path="/meetings"
+            addMeeting={this.addMeeting}
+            meetings={this.state.meetings}
+            userID={this.state.userID}
+          />
+          <CheckIn path="/checkin/:userID/:meetingID" />
           <Register path="/register" registerUser={this.registerUser} />
         </Router>
       </div>
